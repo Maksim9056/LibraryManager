@@ -1,22 +1,77 @@
 ﻿using System.Diagnostics;
+using System.Security;
 
 namespace LibraryManager
 {
     internal class Program
     {
+        
         static void Main(string[] args)
         {
 
             Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
-            bool infiti = true;
+            Trace.Listeners.Add(new ConsoleTraceListener());
+
+            Trace.Listeners.Add(new TextWriterTraceListener("log.txt"));
+
+            //PerformanceCounter performanceCounter = new PerformanceCounter();
+            //performanceCounter.
             Trace.WriteLine($"[LOG] {DateTime.Now} Программа запущена.");
+
+
+            PerformanceCounter cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            Trace.WriteLine("Текущая загрузка CPU: " + cpuCounter.NextValue() + " %");
+            System.Threading.Thread.Sleep(1000); // Даем время для сбора данных
+            Trace.WriteLine("Загрузка CPU через секунду: " + cpuCounter.NextValue() + " %");
+
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            try
+            {
+                if (!EventLog.SourceExists("LibraryManager"))
+                {
+                    EventLog.CreateEventSource("LibraryManager", "Application");
+                }
+                EventLog.WriteEntry("LibraryManager", "Это сообщение записано в журнале EventLog", EventLogEntryType.Information);
+                Process process = Process.Start("notepad.exe");
+                EventLog.WriteEntry("LibraryManager", "Блокнот запущен Information", EventLogEntryType.Information);
+
+                process.WaitForExit();
+                EventLog.WriteEntry("LibraryManager", "Блокнот закрыт Warning", EventLogEntryType.Warning);
+                //EventLog.WriteEntry("LibraryManager", "Блокнот закрыт FailureAudit", EventLogEntryType.FailureAudit);
+                //EventLog.WriteEntry("LibraryManager", "Блокнот закрыт SuccessAudit", EventLogEntryType.SuccessAudit);
+
+                EventLog.WriteEntry("LibraryManager", "Блокнот закрыт Error", EventLogEntryType.Error);
+                stopwatch.Stop();
+                EventLog.WriteEntry("LibraryManager", $"Операция заняла {stopwatch.ElapsedMilliseconds} мс", EventLogEntryType.Information);
+
+
+            }
+            catch (SecurityException ex)
+            {
+                Console.WriteLine($"Ошибка безопасности: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Произошла ошибка: {ex.Message}");
+            }
+
+
+            bool infiti = true;
             LibraryManager.BookManager.BookManager BookManager = new LibraryManager.BookManager.BookManager();
 
             while (infiti)
             {
                 try
                 {
+                    
+                    TraceSource traceSource = new TraceSource("LibraryManager");
 
+
+                    traceSource.Listeners.Add(new ConsoleTraceListener());
+
+                    traceSource.TraceInformation("");
+                    traceSource.TraceEvent(TraceEventType.Warning, 1, "Это предупреждение");
 
                     Trace.WriteLine("Видите  команды (для проверки):\r\n");
                     Trace.WriteLine("add");
@@ -104,6 +159,9 @@ namespace LibraryManager
                     Trace.WriteLine(ex.StackTrace); // Трассировка ошибки
                 }
             }
+
+            Trace.Flush();
+            Trace.Close();
 
             Console.ReadLine();
         }
